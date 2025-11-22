@@ -8,110 +8,110 @@ graph TB
     LoadPage --> LoadAssets[Load CSS, JS, Libraries]
     LoadAssets --> DOMReady[DOMContentLoaded Event]
     
-    DOMReady --> InitVars[Initialize Variables<br/>script.js:2-18]
-    InitVars --> ConnectWS[Connect WebSocket<br/>script.js:24-72]
-    InitVars --> CheckStatus[Check Model Status<br/>GET /api/models/status<br/>script.js:75-105]
+    DOMReady --> InitVars[Initialize Variables]
+    InitVars --> ConnectWS[Connect WebSocket]
+    InitVars --> CheckStatus[Check Model Status]
     
-    ConnectWS --> WSOpen{WebSocket<br/>Connected?}
+    ConnectWS --> WSOpen{WebSocket Connected?}
     WSOpen -->|Yes| SetConnected[isConnected = true]
-    WSOpen -->|No| Retry[Retry after 3s<br/>script.js:62]
+    WSOpen -->|No| Retry[Retry after 3s]
     Retry --> ConnectWS
     
-    CheckStatus --> UpdateUI[Update Model Dropdown<br/>Mark Installed Models ✓<br/>script.js:83-97]
+    CheckStatus --> UpdateUI[Update Model Dropdown]
     
-    SetConnected --> AttachEvents[Attach Event Listeners<br/>script.js:384-587]
+    SetConnected --> AttachEvents[Attach Event Listeners]
     UpdateUI --> AttachEvents
     
-    AttachEvents --> Ready[Display Center UI<br/>Ready for Input]
+    AttachEvents --> Ready[Display Center UI]
     
     Ready --> UserAction{User Action}
     
-    UserAction -->|Select Model| ModelChange[Model Change Event<br/>script.js:454-484]
+    UserAction -->|Select Model| ModelChange[Model Change Event]
     UserAction -->|Type Message| TypeMsg[User Types in Input]
-    UserAction -->|Click Send| SendClick[Send Button Click<br/>script.js:384-396]
-    UserAction -->|Press Enter| EnterKey[Enter Key Press<br/>script.js:399-404]
+    UserAction -->|Click Send| SendClick[Send Button Click]
+    UserAction -->|Press Enter| EnterKey[Enter Key Press]
     
-    ModelChange --> CheckInstalled{Model<br/>Installed?}
-    CheckInstalled -->|Yes| NotifyReady[Show 'Switched to Model'<br/>script.js:474-482]
-    CheckInstalled -->|No| NotifyPull[Show 'Will download'<br/>script.js:462-471]
+    ModelChange --> CheckInstalled{Model Installed?}
+    CheckInstalled -->|Yes| NotifyReady[Show Switched to Model]
+    CheckInstalled -->|No| NotifyPull[Show Will download]
     
     TypeMsg --> UserAction
     NotifyReady --> Ready
     NotifyPull --> Ready
     
-    SendClick --> ValidateInput{Input<br/>Not Empty?}
+    SendClick --> ValidateInput{Input Not Empty?}
     EnterKey --> ValidateInput
     
     ValidateInput -->|No| Ready
-    ValidateInput -->|Yes| AddUserMsg[Add Message to UI<br/>script.js:147-268]
+    ValidateInput -->|Yes| AddUserMsg[Add Message to UI]
     
-    AddUserMsg --> HideCenter[Hide Center Content<br/>Show Bottom Input<br/>script.js:133-144]
-    HideCenter --> SendToBackend[sendMessage Function<br/>script.js:336-381]
+    AddUserMsg --> HideCenter[Hide Center Content]
+    HideCenter --> SendToBackend[sendMessage Function]
     
-    SendToBackend --> ShowTyping[Show Typing Indicator<br/>script.js:271-283]
-    ShowTyping --> SelectModel[Get Selected Model<br/>modelSelect.value<br/>script.js:341]
+    SendToBackend --> ShowTyping[Show Typing Indicator]
+    ShowTyping --> SelectModel[Get Selected Model]
     
-    SelectModel --> CheckConnection{WebSocket<br/>Connected?}
+    SelectModel --> CheckConnection{WebSocket Connected?}
     
-    CheckConnection -->|Yes| SendWS[Send via WebSocket<br/>JSON: message, model_name<br/>script.js:347-350]
-    CheckConnection -->|No| SendHTTP[Send via HTTP POST<br/>/api/chat<br/>script.js:353-375]
+    CheckConnection -->|Yes| SendWS[Send via WebSocket]
+    CheckConnection -->|No| SendHTTP[Send via HTTP POST]
     
-    SendWS --> BackendWS[Go WebSocket Handler<br/>handleWebSocket<br/>main.go:308-404]
-    SendHTTP --> BackendHTTP[Go HTTP Handler<br/>handleChat<br/>main.go:247-305]
+    SendWS --> BackendWS[Go WebSocket Handler]
+    SendHTTP --> BackendHTTP[Go HTTP Handler]
     
-    BackendWS --> ParseJSON[Unmarshal JSON<br/>main.go:335-349]
+    BackendWS --> ParseJSON[Unmarshal JSON]
     BackendHTTP --> ParseJSON
     
-    ParseJSON --> CheckModel{Model Name<br/>Provided?}
+    ParseJSON --> CheckModel{Model Name; Provided?}
     
-    CheckModel -->|Yes| CheckInstall[checkModelInstalled<br/>main.go:451-476<br/>Run: ollama list]
-    CheckModel -->|No| UseCurrentModel[Use currentModel<br/>main.go:73]
+    CheckModel -->|Yes| CheckInstall[checkModelInstalled; main.go:451-476; Run: ollama list]
+    CheckModel -->|No| UseCurrentModel[Use currentModel; main.go:73]
     
-    CheckInstall --> IsInstalled{Model<br/>Installed?}
+    CheckInstall --> IsInstalled{Model; Installed?}
     
-    IsInstalled -->|Yes| UpdateCurrent[Update currentModel<br/>main.go:385-386]
-    IsInstalled -->|No| NotifyPulling[Send 'Pulling model'<br/>main.go:359-363]
+    IsInstalled -->|Yes| UpdateCurrent[Update currentModel; main.go:385-386]
+    IsInstalled -->|No| NotifyPulling[Send 'Pulling model'; main.go:359-363]
     
-    NotifyPulling --> ShowPullUI[Show Model Pulling Indicator<br/>script.js:294-319]
-    ShowPullUI --> PullModel[pullOllamaModel<br/>main.go:479-515]
+    NotifyPulling --> ShowPullUI[Show Model Pulling Indicator; script.js:294-319]
+    ShowPullUI --> PullModel[pullOllamaModel; main.go:479-515]
     
-    PullModel --> RunScript[Run Shell Script<br/>./ollama_pull_and_run.sh<br/>main.go:484]
+    PullModel --> RunScript[Run Shell Script; ./ollama_pull_and_run.sh; main.go:484]
     RunScript --> ScriptFail{Success?}
     
-    ScriptFail -->|No| Fallback[Fallback: ollama pull<br/>main.go:492-497]
-    ScriptFail -->|Yes| AddToList[Add to AVAILABLE_MODELS<br/>main.go:503-512]
+    ScriptFail -->|No| Fallback[Fallback: ollama pull; main.go:492-497]
+    ScriptFail -->|Yes| AddToList[Add to AVAILABLE_MODELS; main.go:503-512]
     Fallback --> AddToList
     
-    AddToList --> SendSuccess[Send 'Successfully pulled'<br/>main.go:377-381]
-    SendSuccess --> HidePullUI[Hide Pulling Indicator<br/>script.js:322-333]
+    AddToList --> SendSuccess[Send 'Successfully pulled'; main.go:377-381]
+    SendSuccess --> HidePullUI[Hide Pulling Indicator; script.js:322-333]
     HidePullUI --> UpdateCurrent
     
-    UseCurrentModel --> ProcessQuery[processOllamaQueryWithLangChain<br/>main.go:392, 563-588]
+    UseCurrentModel --> ProcessQuery[processOllamaQueryWithLangChain; main.go:392, 563-588]
     UpdateCurrent --> ProcessQuery
     
-    ProcessQuery --> FormatPrompt[Format Prompt with Template<br/>main.go:569]
-    FormatPrompt --> InitOllama[Initialize Ollama Client<br/>langchaingo<br/>main.go:572-578]
+    ProcessQuery --> FormatPrompt[Format Prompt with Template; main.go:569]
+    FormatPrompt --> InitOllama[Initialize Ollama Client; langchaingo; main.go:572-578]
     
-    InitOllama --> CallLLM[Call LLM<br/>llm.Call with model & prompt<br/>main.go:581-585]
+    InitOllama --> CallLLM[Call LLM; llm.Call with model & prompt; main.go:581-585]
     
-    CallLLM --> OllamaService[Ollama Service<br/>Model Inference]
-    OllamaService --> GetResponse[Get Response String<br/>main.go:587]
+    CallLLM --> OllamaService[Ollama Service; Model Inference]
+    OllamaService --> GetResponse[Get Response String; main.go:587]
     
-    GetResponse --> SendResponse{Which<br/>Protocol?}
+    GetResponse --> SendResponse{Which; Protocol?}
     
-    SendResponse -->|WebSocket| SendWSResp[Send via WebSocket<br/>main.go:397-400]
-    SendResponse -->|HTTP| SendHTTPResp[Send JSON Response<br/>main.go:299-304]
+    SendResponse -->|WebSocket| SendWSResp[Send via WebSocket; main.go:397-400]
+    SendResponse -->|HTTP| SendHTTPResp[Send JSON Response; main.go:299-304]
     
-    SendWSResp --> ReceiveJS[Receive in JavaScript<br/>socket.onmessage<br/>script.js:32-56]
+    SendWSResp --> ReceiveJS[Receive in JavaScript; socket.onmessage; script.js:32-56]
     SendHTTPResp --> ReceiveJS
     
-    ReceiveJS --> RemoveTyping[Remove Typing Indicator<br/>script.js:54, 286-291]
-    RemoveTyping --> ParseMarkdown[Parse Markdown<br/>marked.parse<br/>script.js:169]
+    ReceiveJS --> RemoveTyping[Remove Typing Indicator; script.js:54, 286-291]
+    RemoveTyping --> ParseMarkdown[Parse Markdown; marked.parse; script.js:169]
     
-    ParseMarkdown --> Highlight[Apply Syntax Highlighting<br/>hljs.highlightElement<br/>script.js:172-224]
+    ParseMarkdown --> Highlight[Apply Syntax Highlighting; hljs.highlightElement; script.js:172-224]
     
-    Highlight --> DisplayMsg[Display Message in UI<br/>script.js:264-267]
-    DisplayMsg --> ScrollChat[Scroll to Bottom<br/>script.js:267]
+    Highlight --> DisplayMsg[Display Message in UI; script.js:264-267]
+    DisplayMsg --> ScrollChat[Scroll to Bottom; script.js:267]
     
     ScrollChat --> Ready
     
@@ -217,24 +217,24 @@ sequenceDiagram
 stateDiagram-v2
     [*] --> Disconnected: Page Load
     
-    Disconnected --> Connecting: connectWebSocket() called<br/>script.js:24
+    Disconnected --> Connecting: connectWebSocket() called
     
-    Connecting --> Connected: socket.onopen<br/>script.js:27-30
-    Connecting --> Error: socket.onerror<br/>script.js:65-68
+    Connecting --> Connected: socket.onopen
+    Connecting --> Error: socket.onerror
     
-    Connected --> MessageSent: User sends message<br/>script.js:347
-    Connected --> Disconnected: socket.onclose<br/>script.js:58-63
+    Connected --> MessageSent: User sends message
+    Connected --> Disconnected: socket.onclose
     Connected --> Error: socket.onerror
     
     MessageSent --> AwaitingResponse: Waiting for server
-    AwaitingResponse --> MessageReceived: socket.onmessage<br/>script.js:32-56
+    AwaitingResponse --> MessageReceived: socket.onmessage
     MessageReceived --> Connected: Message processed
     
     Error --> Disconnected: Connection failed
-    Disconnected --> Reconnecting: After 3s delay<br/>script.js:62
+    Disconnected --> Reconnecting: After 3s delay
     Reconnecting --> Connecting: Retry connection
     
-    Connected --> HTTPFallback: Connection check fails<br/>script.js:345-375
+    Connected --> HTTPFallback: Connection check fails
     HTTPFallback --> Connected: WebSocket restored
     
     note right of Connected
@@ -255,48 +255,48 @@ graph LR
     Client[Browser Client]
     
     subgraph "Go Server :8888"
-        Router[Gorilla Mux Router<br/>main.go:129]
+        Router[Gorilla Mux Router; main.go:129]
         
-        Router --> GET1[GET /<br/>Serve index.html<br/>line 132-134]
-        Router --> GET2[GET /api<br/>API Status<br/>line 137-144]
-        Router --> GET3[GET /api/models<br/>Available Models<br/>line 147]
-        Router --> GET4[GET /api/models/installed-models<br/>Installed Models<br/>line 150]
-        Router --> GET5[GET /api/models/status<br/>Model Status<br/>line 189]
-        Router --> GET6[GET /api/health<br/>Health Check<br/>line 159-183]
-        Router --> GET7[GET /api/chat/ws<br/>WebSocket<br/>line 156]
-        Router --> POST1[POST /api/chat<br/>HTTP Chat<br/>line 153]
-        Router --> POST2[POST /api/models/pull<br/>Pull Model<br/>line 186]
-        Router --> Static[Static Files<br/>line 192-193]
+        Router --> GET1[GET /; Serve index.html; line 132-134]
+        Router --> GET2[GET /api; API Status; line 137-144]
+        Router --> GET3[GET /api/models; Available Models; line 147]
+        Router --> GET4[GET /api/models/installed-models; Installed Models; line 150]
+        Router --> GET5[GET /api/models/status; Model Status; line 189]
+        Router --> GET6[GET /api/health; Health Check; line 159-183]
+        Router --> GET7[GET /api/chat/ws; WebSocket; line 156]
+        Router --> POST1[POST /api/chat; HTTP Chat; line 153]
+        Router --> POST2[POST /api/models/pull; Pull Model; line 186]
+        Router --> Static[Static Files; line 192-193]
         
-        GET3 --> HandlerA[getAvailableModels<br/>line 201-212]
-        GET4 --> HandlerB[getModels<br/>line 407-448]
-        GET5 --> HandlerC[getModelStatus<br/>line 215-244]
-        GET7 --> HandlerD[handleWebSocket<br/>line 308-404]
-        POST1 --> HandlerE[handleChat<br/>line 247-305]
-        POST2 --> HandlerF[handleModelPull<br/>line 518-560]
+        GET3 --> HandlerA[getAvailableModels; line 201-212]
+        GET4 --> HandlerB[getModels; line 407-448]
+        GET5 --> HandlerC[getModelStatus; line 215-244]
+        GET7 --> HandlerD[handleWebSocket; line 308-404]
+        POST1 --> HandlerE[handleChat; line 247-305]
+        POST2 --> HandlerF[handleModelPull; line 518-560]
         
-        HandlerD --> Process1[processOllamaQueryWithLangChain<br/>line 563-588]
+        HandlerD --> Process1[processOllamaQueryWithLangChain; line 563-588]
         HandlerE --> Process1
         
-        HandlerC --> Check1[checkModelInstalled<br/>line 451-476]
+        HandlerC --> Check1[checkModelInstalled; line 451-476]
         HandlerD --> Check1
         HandlerE --> Check1
         
-        HandlerD --> Pull1[pullOllamaModel<br/>line 479-515]
+        HandlerD --> Pull1[pullOllamaModel; line 479-515]
         HandlerE --> Pull1
         HandlerF --> Pull1
         
-        HandlerB --> Shell1[exec.Command<br/>ollama list]
+        HandlerB --> Shell1[exec.Command; ollama list]
         Check1 --> Shell1
-        Pull1 --> Shell2[exec.Command<br/>ollama pull / script]
+        Pull1 --> Shell2[exec.Command; ollama pull / script]
         
-        Process1 --> LangChain[langchaingo Library<br/>ollama.New<br/>llm.Call<br/>line 572-585]
+        Process1 --> LangChain[langchaingo Library; ollama.New; llm.Call; line 572-585]
     end
     
     subgraph "External Services"
         Shell1 --> Ollama1[Ollama CLI]
         Shell2 --> Ollama1
-        LangChain --> Ollama2[Ollama Service<br/>HTTP API]
+        LangChain --> Ollama2[Ollama Service; HTTP API]
     end
     
     Client -->|HTTP/WS Requests| Router
@@ -313,8 +313,8 @@ graph LR
 ```mermaid
 graph TD
     subgraph "Frontend JavaScript"
-        JSMsg[JavaScript Message Object<br/>script.js:347-350]
-        JSMsg --> JSONStr["JSON.stringify<br/>{<br/>  message: string,<br/>  model_name: string<br/>}"]
+        JSMsg[JavaScript Message Object; script.js:347-350]
+        JSMsg --> JSONStr["JSON.stringify; {;   message: string,;   model_name: string; }"]
     end
     
     subgraph "Network Layer"
@@ -323,34 +323,34 @@ graph TD
     end
     
     subgraph "Backend Go Structures"
-        WSTransport --> GoUnmarshal[json.Unmarshal<br/>main.go:335]
+        WSTransport --> GoUnmarshal[json.Unmarshal; main.go:335]
         HTTPTransport --> GoUnmarshal
         
-        GoUnmarshal --> ChatMsgStruct["ChatMessage struct<br/>main.go:29-32<br/>{<br/>  Message string<br/>  ModelName string<br/>}"]
+        GoUnmarshal --> ChatMsgStruct["ChatMessage struct; main.go:29-32; {;   Message string;   ModelName string; }"]
         
         ChatMsgStruct --> Processing[Process Message]
         
-        Processing --> ResponseStruct["ChatResponse struct<br/>main.go:41-44<br/>{<br/>  Response string<br/>  Action string<br/>}"]
+        Processing --> ResponseStruct["ChatResponse struct; main.go:41-44; {;   Response string;   Action string; }"]
         
-        ResponseStruct --> GoMarshal[json.Marshal<br/>main.go:299, 552]
+        ResponseStruct --> GoMarshal[json.Marshal; main.go:299, 552]
     end
     
     subgraph "Response Path"
-        GoMarshal -->|WebSocket| WSResponse[conn.WriteMessage<br/>main.go:397]
-        GoMarshal -->|HTTP| HTTPResponse[json.Encode<br/>main.go:299]
+        GoMarshal -->|WebSocket| WSResponse[conn.WriteMessage; main.go:397]
+        GoMarshal -->|HTTP| HTTPResponse[json.Encode; main.go:299]
         
-        WSResponse --> JSReceive1[socket.onmessage<br/>script.js:32]
-        HTTPResponse --> JSReceive2[fetch response.json<br/>script.js:370]
+        WSResponse --> JSReceive1[socket.onmessage; script.js:32]
+        HTTPResponse --> JSReceive2[fetch response.json; script.js:370]
         
         JSReceive1 --> JSParse[Parse Response]
         JSReceive2 --> JSParse
         
-        JSParse --> MarkdownParse[marked.parse<br/>script.js:169]
-        MarkdownParse --> HTMLRender[Render to DOM<br/>script.js:264]
+        JSParse --> MarkdownParse[marked.parse; script.js:169]
+        MarkdownParse --> HTMLRender[Render to DOM; script.js:264]
     end
     
     subgraph "State Management"
-        GlobalState["Global Variables<br/>━━━━━━━━━━━━━━<br/>Go:<br/>  currentModel string<br/>  AVAILABLE_MODELS []string<br/>━━━━━━━━━━━━━━<br/>JavaScript:<br/>  socket WebSocket<br/>  isConnected bool<br/>  isPullingModel bool"]
+        GlobalState["Global Variables; ━━━━━━━━━━━━━━; Go:;   currentModel string;   AVAILABLE_MODELS []string; ━━━━━━━━━━━━━━; JavaScript:;   socket WebSocket;   isConnected bool;   isPullingModel bool"]
     end
     
     Processing -.Updates.-> GlobalState
@@ -376,12 +376,12 @@ graph TB
     TrySend -->|Error| ErrorType{Error Type?}
     TrySend -->|Success| Backend[Backend Receives]
     
-    ErrorType -->|Network Error| NetError[Network Error<br/>script.js:377-379]
-    ErrorType -->|WebSocket Closed| WSError[WebSocket Error<br/>script.js:65-68]
-    ErrorType -->|HTTP Error| HTTPError[HTTP Error<br/>script.js:364-367]
+    ErrorType -->|Network Error| NetError[Network Error; script.js:377-379]
+    ErrorType -->|WebSocket Closed| WSError[WebSocket Error; script.js:65-68]
+    ErrorType -->|HTTP Error| HTTPError[HTTP Error; script.js:364-367]
     
-    NetError --> ShowError[Show Error Message<br/>script.js:379]
-    WSError --> Reconnect[Auto Reconnect<br/>script.js:62]
+    NetError --> ShowError[Show Error Message; script.js:379]
+    WSError --> Reconnect[Auto Reconnect; script.js:62]
     HTTPError --> ShowError
     
     Reconnect --> TrySend
@@ -389,25 +389,25 @@ graph TB
     
     Backend --> BackendProc{Backend Processing}
     
-    BackendProc -->|Model Not Installed| AutoPull[Auto-Pull Model<br/>main.go:266-286]
-    BackendProc -->|Ollama Down| OllamaError[Return 503 Error<br/>main.go:162-172]
+    BackendProc -->|Model Not Installed| AutoPull[Auto-Pull Model; main.go:266-286]
+    BackendProc -->|Ollama Down| OllamaError[Return 503 Error; main.go:162-172]
     BackendProc -->|Success| ProcessLLM[Process with LLM]
     
     AutoPull --> PullResult{Pull Success?}
     
     PullResult -->|Success| ProcessLLM
-    PullResult -->|Failed Script| Fallback[Try Direct Pull<br/>main.go:492-497]
+    PullResult -->|Failed Script| Fallback[Try Direct Pull; main.go:492-497]
     
     Fallback --> FallbackResult{Success?}
     FallbackResult -->|Yes| ProcessLLM
-    FallbackResult -->|No| PullError[Return Pull Error<br/>main.go:280-285]
+    FallbackResult -->|No| PullError[Return Pull Error; main.go:280-285]
     
     OllamaError --> DisplayError[Display Error in UI]
     PullError --> DisplayError
     
     ProcessLLM --> LLMResult{LLM Call}
     
-    LLMResult -->|Error| LLMError[Log & Return Error<br/>main.go:576-577, 582-584]
+    LLMResult -->|Error| LLMError[Log & Return Error; main.go:576-577, 582-584]
     LLMResult -->|Success| SendResponse[Send Response]
     
     LLMError --> DisplayError
