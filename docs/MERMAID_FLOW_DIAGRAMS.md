@@ -431,38 +431,38 @@ graph TB
 ```mermaid
 gantt
     title OllamaMax - Complete Request Timeline
-    dateFormat X
-    axisFormat %L ms
+    dateFormat x
+    axisFormat %s
     
     section Browser
-    Page Load                      :0, 100
-    Initialize JS                  :100, 50
-    Connect WebSocket             :150, 100
-    User Types Message            :250, 500
-    Click Send                    :750, 10
-    Package & Send                :760, 40
-    Show Typing Indicator         :800, 1500
-    Receive Response              :2300, 50
-    Parse Markdown                :2350, 100
-    Apply Highlighting            :2450, 150
-    Display Message               :2600, 50
+    Page Load                  :a1, 0, 100
+    Initialize JS              :a2, 100, 50
+    Connect WebSocket          :a3, 150, 100
+    User Types Message         :a4, 250, 500
+    Click Send                 :a5, 750, 10
+    Package Send               :a6, 760, 40
+    Show Typing Indicator      :a7, 800, 1500
+    Receive Response           :a8, 2300, 50
+    Parse Markdown             :a9, 2350, 100
+    Apply Highlighting         :a10, 2450, 150
+    Display Message            :a11, 2600, 50
     
     section Go Server
-    Receive Request               :800, 50
-    Unmarshal JSON                :850, 20
-    Check Model Status            :870, 100
-    Process Query                 :970, 1200
-    Format Response               :2170, 30
-    Send Response                 :2200, 100
+    Receive Request            :b1, 800, 50
+    Unmarshal JSON             :b2, 850, 20
+    Check Model Status         :b3, 870, 100
+    Process Query              :b4, 970, 1200
+    Format Response            :b5, 2170, 30
+    Send Response              :b6, 2200, 100
     
     section Ollama
-    Receive LLM Call              :970, 50
-    Load Model                    :1020, 150
-    Run Inference                 :1170, 1000
-    Return Result                 :2170, 50
+    Receive LLM Call           :c1, 970, 50
+    Load Model                 :c2, 1020, 150
+    Run Inference              :c3, 1170, 1000
+    Return Result              :c4, 2170, 50
     
     section Shell
-    Execute ollama list           :870, 100
+    Execute ollama list        :d1, 870, 100
 ```
 
 ## Key File & Line References
