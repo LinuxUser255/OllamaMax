@@ -4,9 +4,13 @@
   <img src="./static/images/ollama.png" alt="Ollama Logo" width="200">
 </p>
 
+<p align="center">
+  <img src="./resources/images/ollama-max-home-page.png" alt="OllamaMax Interface" width="600">
+</p>
+
 > A modern, fast, and lightweight web interface for interacting with Ollama's large language models
 
-## 🚀 Quick Links
+## Quick Links
 
 - **[Complete Documentation](./docs/README.md)** - Full setup guide, features, and model library
 - **[Code Execution Flow](./docs/CODE_EXECUTION_ANALYSIS.md)** - Detailed line-by-line code analysis
@@ -14,17 +18,17 @@
 - **[Model Pull System](./docs/MODEL_PULL_SYSTEM.md)** - Auto-download and optimization
 - **[Development Notes](./docs/)** - Feature docs and TODOs
 
-## ✨ Features
+## Features
 
-- 🎨 **Modern Dark Theme UI** - ChatGPT-inspired interface
-- 🔄 **Real-time Communication** - WebSocket support with auto-reconnect
-- 🤖 **Multi-Model Support** - Switch between coding, vision, and chat models
-- 📦 **Auto-Download Models** - Automatic model pulling when needed
-- 💻 **Code Syntax Highlighting** - VSCode-style highlighting with copy buttons
-- 📝 **Markdown Rendering** - Full markdown support for rich responses
-- ⚡ **Zero Dependencies Frontend** - No Node.js, no frameworks, pure HTML/CSS/JS
+- **Modern Dark Theme UI** - ChatGPT-inspired interface
+- **Real-time Communication** - WebSocket support with auto-reconnect
+- **Multi-Model Support** - Switch between coding, vision, and chat models
+- **Auto-Download Models** - Automatic model pulling when needed
+- **Code Syntax Highlighting** - VSCode-style highlighting with copy buttons
+- **Markdown Rendering** - Full markdown support for rich responses
+- **Zero Dependencies Frontend** - No Node.js, no frameworks, pure HTML/CSS/JS
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 | Layer | Technology |
 |-------|-----------|
@@ -33,7 +37,7 @@
 | **LLM Runtime** | Ollama + langchaingo library |
 | **Models** | 10+ curated LLMs (coding, vision, chat) |
 
-## 📦 Quick Start
+## Quick Start
 
 ### 1. Install Ollama
 ```bash
@@ -62,7 +66,7 @@ go build -o ollamamax main.go
 ### 4. Open in Browser
 Navigate to: `http://localhost:8888`
 
-## 🎯 Supported Models
+## Supported Models
 
 The application supports **10 carefully selected models** across different use cases:
 
@@ -90,7 +94,7 @@ The application supports **10 carefully selected models** across different use c
 - 16GB RAM recommended for multiple models
 - GPU optional but recommended (CUDA/ROCm)
 
-## 📊 Architecture Overview
+## Architecture Overview
 
 ```
 ┌─────────────┐      WebSocket/HTTP      ┌──────────────┐
@@ -121,7 +125,7 @@ Sends query to Ollama → Receives response → Renders in UI
 
 See [CODE_EXECUTION_ANALYSIS.md](./docs/CODE_EXECUTION_ANALYSIS.md) for complete execution flow with line numbers.
 
-## 📖 Documentation Structure
+## Documentation Structure
 
 ```
 docs/
@@ -136,7 +140,7 @@ docs/
 └── WARP.md                        # AI agent instructions
 ```
 
-## 🔧 Development
+## Development
 
 ### Project Structure
 ```
@@ -190,7 +194,7 @@ curl -X POST http://localhost:8888/api/chat \
   -d '{"message":"Hello","model_name":"llama3.1:8b"}'
 ```
 
-## 🎨 Features in Detail
+## Features in Detail
 
 ### Auto-Pull Models
 When you select a model that isn't installed, OllamaMax automatically:
@@ -212,30 +216,30 @@ When you select a model that isn't installed, OllamaMax automatically:
 - Copy entire message button
 - Language badges on code blocks
 
-## 🤝 Contributing
+## Contributing
 
 This is a personal project, but suggestions are welcome! See [docs/TODO.md](./docs/TODO.md) for planned features.
 
-## 📝 License
+## License
 
 This project uses Ollama, which is licensed under the MIT License.
 
-## 🔗 Related Links
+## Related Links
 
 - [Ollama Official Site](https://ollama.com/)
 - [Ollama GitHub](https://github.com/ollama/ollama)
 - [Ollama Model Library](https://ollama.com/library)
 - [langchaingo Documentation](https://github.com/tmc/langchaingo)
 
-## 📊 Recent Changes
+## Recent Changes
 
 ### November 22, 2024
-- ✅ Organized all documentation into `docs/` folder
-- ✅ Created comprehensive code execution flow analysis
-- ✅ Added Mermaid flow diagrams (7 different visualizations)
-- ✅ Documented complete architecture and data flow
-- ✅ Updated README with clear navigation structure
+- Organized all documentation into `docs/` folder
+- Created comprehensive code execution flow analysis
+- Added Mermaid flow diagrams (7 different visualizations)
+- Documented complete architecture and data flow
+- Updated README with clear navigation structure
 
 ---
 
-**Made with ❤️ using Go, Ollama, and zero frontend frameworks**
+**Built with Go, Ollama, and zero frontend frameworks**
