@@ -429,40 +429,44 @@ graph TB
 ## 7. Component Interaction Timeline
 
 ```mermaid
-gantt
-    title OllamaMax - Complete Request Timeline
-    dateFormat x
-    axisFormat %s
+sequenceDiagram
+    participant Browser
+    participant GoServer as Go Server
+    participant Shell
+    participant Ollama
     
-    section Browser
-    Page Load                  :a1, 0, 100
-    Initialize JS              :a2, 100, 50
-    Connect WebSocket          :a3, 150, 100
-    User Types Message         :a4, 250, 500
-    Click Send                 :a5, 750, 10
-    Package Send               :a6, 760, 40
-    Show Typing Indicator      :a7, 800, 1500
-    Receive Response           :a8, 2300, 50
-    Parse Markdown             :a9, 2350, 100
-    Apply Highlighting         :a10, 2450, 150
-    Display Message            :a11, 2600, 50
+    Note over Browser: Page Load (0-100ms)
+    Note over Browser: Initialize JS (100-150ms)
+    Note over Browser: Connect WebSocket (150-250ms)
+    Note over Browser: User Types Message (250-750ms)
+    Note over Browser: Click Send (750ms)
     
-    section Go Server
-    Receive Request            :b1, 800, 50
-    Unmarshal JSON             :b2, 850, 20
-    Check Model Status         :b3, 870, 100
-    Process Query              :b4, 970, 1200
-    Format Response            :b5, 2170, 30
-    Send Response              :b6, 2200, 100
+    Browser->>GoServer: Send Message (760-800ms)
+    Note over Browser: Show Typing Indicator
     
-    section Ollama
-    Receive LLM Call           :c1, 970, 50
-    Load Model                 :c2, 1020, 150
-    Run Inference              :c3, 1170, 1000
-    Return Result              :c4, 2170, 50
+    activate GoServer
+    Note over GoServer: Receive Request (800-850ms)
+    Note over GoServer: Unmarshal JSON (850-870ms)
     
-    section Shell
-    Execute ollama list        :d1, 870, 100
+    GoServer->>Shell: Check Model Status (870ms)
+    activate Shell
+    Shell-->>GoServer: Return Status (970ms)
+    deactivate Shell
+    
+    GoServer->>Ollama: Process Query (970ms)
+    activate Ollama
+    Note over Ollama: Load Model (970-1170ms)
+    Note over Ollama: Run Inference (1170-2170ms)
+    Ollama-->>GoServer: Return Result (2170ms)
+    deactivate Ollama
+    
+    Note over GoServer: Format Response (2170-2200ms)
+    GoServer-->>Browser: Send Response (2200-2300ms)
+    deactivate GoServer
+    
+    Note over Browser: Parse Markdown (2350-2450ms)
+    Note over Browser: Apply Highlighting (2450-2600ms)
+    Note over Browser: Display Message (2650ms)
 ```
 
 ## Key File & Line References
