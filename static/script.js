@@ -3,10 +3,19 @@ document.addEventListener('DOMContentLoaded', function() {
     const userInput = document.getElementById('user-input');
     const sendButton = document.getElementById('send-button');
     const modelSelect = document.getElementById('model-select');
+    
+    // Bottom input area elements
+    const bottomInputArea = document.getElementById('bottom-input-area');
+    const userInputBottom = document.getElementById('user-input-bottom');
+    const sendButtonBottom = document.getElementById('send-button-bottom');
 
     // Backend API URL - make sure this matches your backend server
     const API_URL = 'http://localhost:8888/api/chat';
     const WS_URL = 'ws://localhost:8888/api/chat/ws';
+    const MODEL_STATUS_URL = 'http://localhost:8888/api/models/status';
+    
+    // Track model pulling state
+    let isPullingModel = false;
 
     // Initialize WebSocket connection
     let socket;
@@ -22,8 +31,28 @@ document.addEventListener('DOMContentLoaded', function() {
         
         socket.onmessage = function(event) {
             console.log('Message received from server:', event.data);
+            
+            // Check if this is a status message about model pulling
+            const message = event.data;
+            if (message.includes('is not installed. Pulling it now')) {
+                isPullingModel = true;
+                showModelPullingIndicator(message);
+                return;
+            } else if (message.includes('Successfully pulled model')) {
+                isPullingModel = false;
+                hideModelPullingIndicator();
+                checkModelStatus(); // Refresh model status
+                addMessage('Model successfully downloaded and ready to use!', false);
+                return;
+            } else if (message.includes('Failed to pull model')) {
+                isPullingModel = false;
+                hideModelPullingIndicator();
+                addMessage(message, false);
+                return;
+            }
+            
             removeTypingIndicator();
-            addMessage(event.data, false);
+            addMessage(message, false);
         };
         
         socket.onclose = function() {
@@ -41,6 +70,39 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Connect to WebSocket when page loads
     connectWebSocket();
+    
+    // Function to check model installation status
+    async function checkModelStatus() {
+        try {
+            const response = await fetch(MODEL_STATUS_URL);
+            if (response.ok) {
+                const data = await response.json();
+                console.log('Model status:', data);
+                
+                // Mark installed models in the dropdown
+                data.models.forEach(model => {
+                    const option = Array.from(modelSelect.options).find(opt => opt.value === model.name);
+                    if (option) {
+                        if (model.installed) {
+                            option.text = option.text.replace(' (Not Installed)', '') + ' ✓';
+                        } else {
+                            option.text = option.text.replace(' ✓', '') + ' (Not Installed)';
+                        }
+                    }
+                });
+                
+                // Set current model if different from selected
+                if (data.current_model && modelSelect.value !== data.current_model) {
+                    modelSelect.value = data.current_model;
+                }
+            }
+        } catch (error) {
+            console.error('Error checking model status:', error);
+        }
+    }
+    
+    // Check model status on load
+    checkModelStatus();
 
     // Configure marked.js with better code highlighting options
     marked.setOptions({
@@ -67,8 +129,25 @@ document.addEventListener('DOMContentLoaded', function() {
 
     marked.use({ renderer });
 
+    // Function to hide the center content and show bottom input on first message
+    function hideCenterContent() {
+        const centerContent = document.querySelector('.center-content');
+        if (centerContent && !centerContent.classList.contains('hide')) {
+            centerContent.classList.add('hide');
+            
+            // Show bottom input area
+            if (bottomInputArea) {
+                bottomInputArea.style.display = 'flex';
+                chatMessages.classList.add('with-bottom-input');
+            }
+        }
+    }
+
     // Function to add a message to the chat
     function addMessage(content, isUser = false) {
+        // Hide center content when first message is added
+        hideCenterContent();
+        
         const messageRow = document.createElement('div');
         messageRow.className = `message-row ${isUser ? 'user' : 'bot'}`;
 
@@ -210,6 +289,48 @@ document.addEventListener('DOMContentLoaded', function() {
             indicator.remove();
         }
     }
+    
+    // Function to show model pulling indicator
+    function showModelPullingIndicator(message) {
+        // Remove any existing indicators
+        hideModelPullingIndicator();
+        removeTypingIndicator();
+        
+        // Disable UI elements
+        sendButton.disabled = true;
+        modelSelect.disabled = true;
+        userInput.disabled = true;
+        userInput.placeholder = 'Downloading model, please wait...';
+        
+        // Create a special pulling indicator
+        const indicator = document.createElement('div');
+        indicator.className = 'model-pulling-indicator';
+        indicator.id = 'model-pulling-indicator';
+        indicator.innerHTML = `
+            <div class="pulling-content">
+                <div class="spinner"></div>
+                <div class="pulling-text">${message}</div>
+                <div class="pulling-note">This may take several minutes depending on model size and internet speed...</div>
+            </div>
+        `;
+        
+        chatMessages.appendChild(indicator);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+    
+    // Function to hide model pulling indicator
+    function hideModelPullingIndicator() {
+        const indicator = document.getElementById('model-pulling-indicator');
+        if (indicator) {
+            indicator.remove();
+        }
+        
+        // Re-enable UI elements
+        sendButton.disabled = false;
+        modelSelect.disabled = false;
+        userInput.disabled = false;
+        userInput.placeholder = 'What do you want to know?';
+    }
 
     // Function to send a message to the backend
     async function sendMessage(message) {
@@ -217,6 +338,7 @@ document.addEventListener('DOMContentLoaded', function() {
             showTypingIndicator();
             
             // Get the currently selected model
+            // Interfaces with the frontend and sends the message to the backend
             const selectedModel = modelSelect.value;
             console.log(`Sending message with model: ${selectedModel}`);
             
@@ -280,6 +402,113 @@ document.addEventListener('DOMContentLoaded', function() {
             e.preventDefault();
             sendButton.click();
         }
+    });
+
+    // Auto-resize textarea as user types
+    userInput.addEventListener('input', function() {
+        this.style.height = 'auto';
+        this.style.height = (this.scrollHeight) + 'px';
+    });
+    
+    // Bottom input area - auto-resize
+    if (userInputBottom) {
+        userInputBottom.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = (this.scrollHeight) + 'px';
+        });
+    }
+    
+    // Bottom input area - send button
+    if (sendButtonBottom) {
+        sendButtonBottom.addEventListener('click', function() {
+            const message = userInputBottom.value.trim();
+            if (message) {
+                // Add user message to chat
+                addMessage(message, true);
+                
+                // Clear input field
+                userInputBottom.value = '';
+                userInputBottom.style.height = 'auto';
+                
+                // Send message to backend
+                sendMessage(message);
+            }
+        });
+    }
+    
+    // Bottom input area - Enter key
+    if (userInputBottom) {
+        userInputBottom.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendButtonBottom.click();
+            }
+        });
+    }
+
+    // Initialize model selector
+    if (!modelSelect.value || modelSelect.value === 'auto') {
+        modelSelect.value = 'llama3.1'; // Set default model
+    }
+    
+    // Add visual feedback when model is changed
+    modelSelect.addEventListener('change', function() {
+        const selectedModel = this.value;
+        console.log(`Model changed to: ${selectedModel}`);
+        
+        // Check if model needs to be installed
+        const selectedOption = this.options[this.selectedIndex];
+        if (selectedOption.text.includes('(Not Installed)')) {
+            // Model needs to be pulled - it will be pulled when user sends first message
+            const notification = document.createElement('div');
+            notification.className = 'model-change-notification';
+            notification.textContent = `Model ${selectedOption.text} will be downloaded when you send a message`;
+            notification.style.backgroundColor = '#f59e0b'; // Warning color
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
+        } else {
+            // Model is ready to use
+            const notification = document.createElement('div');
+            notification.className = 'model-change-notification';
+            notification.textContent = `Switched to ${this.options[this.selectedIndex].text}`;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                setTimeout(() => notification.remove(), 300);
+            }, 2000);
+        }
+    });
+
+    // Action buttons functionality
+    const actionButtons = document.querySelectorAll('.action-button');
+    actionButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const action = this.getAttribute('title');
+            // These are placeholders - you can implement actual functionality
+            console.log(`Action button clicked: ${action}`);
+            
+            switch(action) {
+                case 'Deep Search':
+                    userInput.value = '[Deep Search Mode] ';
+                    userInput.focus();
+                    break;
+                case 'Create Image':
+                    userInput.value = 'Create an image of ';
+                    userInput.focus();
+                    break;
+                case 'Pick Personas':
+                    // Could open a persona selector modal
+                    break;
+                case 'Voice':
+                    // Could toggle voice input
+                    break;
+            }
+        });
     });
 
     const previewToggle = document.getElementById('preview-toggle');

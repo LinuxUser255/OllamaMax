@@ -43,25 +43,31 @@ type ChatResponse struct {
 	Action   string
 }
 
-// Available models
+// Available models - categorized as per TODO.md
 var AVAILABLE_MODELS = []string{
-	"gemma3",
-	"qwen3",
-	"devstral",
+	// Coding & Software Engineering
+	"qwen2.5-coder:7b",
+	"deepseek-coder:6.7b",
 	"deepseek-r1",
-	"deepseek-coder-v2",
-	"llama4",
-	"qwen2.5vl",
-	"llama3.3",
-	"codellama",
-	"starcoder2",
-	"codegemma",
-	"phi4",
-	"mistral",
+	"glm-4.6",
+	"deepseek-v3.1",
+	// Vision-Language & Multimodal
+	"qwen3-vl",
+	"llava:7b",
+	"moondream:1.8b",
+	// General Chat & Reasoning
+	"qwen3:7b",
+	"llama3.1:8b",
+	"gemma2:9b",
+	"mistral:7b",
+	// Lightweight / Edge & Embeddings
+	"phi3:mini",
+	"tinyllama:1.1b",
+	"nomic-embed-text",
 }
 
 // Default model
-const DEFAULT_MODEL = "ollama3:8b"
+const DEFAULT_MODEL = "llama3.1:8b"
 
 // Current model
 var currentModel = DEFAULT_MODEL
@@ -179,6 +185,9 @@ func main() {
 	// Add model pull endpoint
 	r.HandleFunc("/api/models/pull", handleModelPull).Methods("POST")
 
+	// Add endpoint to check model status
+	r.HandleFunc("/api/models/status", getModelStatus).Methods("GET")
+
 	// Static files
 	fs := http.FileServer(http.Dir("./static"))
 	r.PathPrefix("/").Handler(http.StripPrefix("/", fs))
@@ -193,6 +202,38 @@ func getAvailableModels(w http.ResponseWriter, r *http.Request) {
 	response := ModelInfoResponse{
 		AvailableModels: AVAILABLE_MODELS,
 		CurrentModel:    currentModel,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	err := json.NewEncoder(w).Encode(response)
+	if err != nil {
+		return
+	}
+}
+
+// Get model status - shows which models are installed
+func getModelStatus(w http.ResponseWriter, r *http.Request) {
+	type ModelStatus struct {
+		Name      string `json:"name"`
+		Installed bool   `json:"installed"`
+	}
+
+	type ModelStatusResponse struct {
+		Models       []ModelStatus `json:"models"`
+		CurrentModel string        `json:"current_model"`
+	}
+
+	var models []ModelStatus
+	for _, modelName := range AVAILABLE_MODELS {
+		models = append(models, ModelStatus{
+			Name:      modelName,
+			Installed: checkModelInstalled(modelName),
+		})
+	}
+
+	response := ModelStatusResponse{
+		Models:       models,
+		CurrentModel: currentModel,
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -220,57 +261,34 @@ func handleChat(w http.ResponseWriter, r *http.Request) {
 
 	// Check if we need to switch models
 	if chatMsg.ModelName != "" && chatMsg.ModelName != currentModel {
-		// Check if the requested model is available
-		modelAvailable := false
-		for _, model := range AVAILABLE_MODELS {
-			if model == chatMsg.ModelName {
-				modelAvailable = true
-				break
-			}
-		}
+		// Check if the model is installed
+		if !checkModelInstalled(chatMsg.ModelName) {
+			// Model not installed, auto-pull it
+			log.Printf("Model %s not installed, attempting to pull...", chatMsg.ModelName)
 
-		if !modelAvailable {
-			// Check if the model exists in Ollama's repository
-			cmd := exec.Command("ollama", "list")
-			output, err := cmd.CombinedOutput()
+			// Send a message that we're pulling the model
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(ChatResponse{
+				Response: fmt.Sprintf("Model %s is not installed. Pulling it now, this may take a few minutes...", chatMsg.ModelName),
+			})
 
-			// If we can run the command, check if the model is installed
-			modelInstalled := false
-			if err == nil {
-				lines := strings.Split(string(output), "\n")
-				for i, line := range lines {
-					if i == 0 || len(line) == 0 {
-						continue // Skip header or empty lines
-					}
-
-					fields := strings.Fields(line)
-					if len(fields) >= 1 && fields[0] == chatMsg.ModelName {
-						modelInstalled = true
-						break
-					}
-				}
-			}
-
-			if modelInstalled {
-				// Model is installed but not in our list, add it
-				AVAILABLE_MODELS = append(AVAILABLE_MODELS, chatMsg.ModelName)
-				currentModel = chatMsg.ModelName
-			} else {
-				// Model is not installed, suggest pulling it, then offer to pull it
-				w.WriteHeader(http.StatusNotFound)
+			// Pull the model
+			_, pullErr := pullOllamaModel(chatMsg.ModelName)
+			if pullErr != nil {
+				w.WriteHeader(http.StatusInternalServerError)
 				err := json.NewEncoder(w).Encode(ChatResponse{
-					Response: fmt.Sprintf("Model %s is not available. Would you like to pull it from Ollama's repository?", chatMsg.ModelName),
-					Action:   fmt.Sprintf("pull:%s", chatMsg.ModelName),
+					Response: fmt.Sprintf("Failed to pull model %s: %v", chatMsg.ModelName, pullErr),
 				})
 				if err != nil {
 					return
 				}
 				return
 			}
-		} else {
-			// Update the current model
-			currentModel = chatMsg.ModelName
 		}
+
+		// Update the current model
+		currentModel = chatMsg.ModelName
+		log.Printf("Switched to model: %s", currentModel)
 	}
 
 	// Process the message with Ollama
@@ -332,64 +350,40 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 
 		// Check if we need to switch models
 		if chatMsg.ModelName != "" && chatMsg.ModelName != currentModel {
-			// Check if the requested model is available
-			modelAvailable := false
-			for _, model := range AVAILABLE_MODELS {
-				if model == chatMsg.ModelName {
-					modelAvailable = true
-					break
-				}
-			}
+			// Check if the model is installed
+			if !checkModelInstalled(chatMsg.ModelName) {
+				// Model not installed, notify user and pull it
+				log.Printf("Model %s not installed, attempting to pull...", chatMsg.ModelName)
 
-			if !modelAvailable {
-				// Check if the model exists in Ollama's repository
-				cmd := exec.Command("ollama", "list")
-				output, err := cmd.CombinedOutput()
-
-				// If we can run the command, check if the model is installed
-				modelInstalled := false
-				if err == nil {
-					lines := strings.Split(string(output), "\n")
-					for i, line := range lines {
-						if i == 0 || len(line) == 0 {
-							continue // Skip header or empty lines
-						}
-
-						fields := strings.Fields(line)
-						if len(fields) >= 1 && fields[0] == chatMsg.ModelName {
-							modelInstalled = true
-							break
-						}
-					}
+				// Send status message about pulling
+				statusMsg := fmt.Sprintf("Model %s is not installed. Pulling it now, this may take a few minutes...", chatMsg.ModelName)
+				if err := conn.WriteMessage(websocket.TextMessage, []byte(statusMsg)); err != nil {
+					log.Println("WebSocket write error:", err)
+					return
 				}
 
-				if modelInstalled {
-					// Model is installed but not in our list, add it
-					AVAILABLE_MODELS = append(AVAILABLE_MODELS, chatMsg.ModelName)
-					currentModel = chatMsg.ModelName
-				} else {
-					// Model is not installed, ask user if they want to pull it
-					response := ChatResponse{
-						Response: fmt.Sprintf("Model %s is not available. Would you like to pull it from Ollama's repository?", chatMsg.ModelName),
-						Action:   fmt.Sprintf("pull:%s", chatMsg.ModelName),
-					}
-
-					responseJSON, err := json.Marshal(response)
-					if err != nil {
-						log.Printf("Error marshaling response: %v", err)
-						continue
-					}
-
-					if err := conn.WriteMessage(websocket.TextMessage, responseJSON); err != nil {
+				// Pull the model
+				_, pullErr := pullOllamaModel(chatMsg.ModelName)
+				if pullErr != nil {
+					errorMsg := fmt.Sprintf("Failed to pull model %s: %v", chatMsg.ModelName, pullErr)
+					if err := conn.WriteMessage(websocket.TextMessage, []byte(errorMsg)); err != nil {
 						log.Println("WebSocket write error:", err)
 						return
 					}
 					continue
 				}
-			} else {
-				// Update the current model
-				currentModel = chatMsg.ModelName
+
+				// Send success message
+				successMsg := fmt.Sprintf("Successfully pulled model %s. Ready to use!", chatMsg.ModelName)
+				if err := conn.WriteMessage(websocket.TextMessage, []byte(successMsg)); err != nil {
+					log.Println("WebSocket write error:", err)
+					return
+				}
 			}
+
+			// Update the current model
+			currentModel = chatMsg.ModelName
+			log.Printf("Switched to model: %s", currentModel)
 		}
 
 		log.Printf("Processing query with model: %s", currentModel)
@@ -453,25 +447,69 @@ func getModels(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// pullOllamaModel pulls a model by running this shell script located in this repo: resources/run_ollama.sh
+// checkModelInstalled checks if a model is installed locally
+func checkModelInstalled(modelName string) bool {
+	cmd := exec.Command("ollama", "list")
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		log.Printf("Error checking installed models: %v", err)
+		return false
+	}
+
+	lines := strings.Split(string(output), "\n")
+	for i, line := range lines {
+		if i == 0 || len(line) == 0 {
+			continue // Skip header or empty lines
+		}
+
+		fields := strings.Fields(line)
+		if len(fields) >= 1 {
+			// Check if the model name matches (with or without tag)
+			installedModel := fields[0]
+			// Handle cases like "llama3.1:latest" vs "llama3.1"
+			if installedModel == modelName || strings.HasPrefix(installedModel, modelName+":") {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// pullOllamaModel pulls a model using the ollama_pull_and_run.sh script
 func pullOllamaModel(modelName string) (string, error) {
 	log.Printf("Attempting to pull model: %s", modelName)
 
-	// Create command to pull the model using resources/run_ollama.sh
-	cmd := exec.Command("sh", "./resources/run_ollama.sh", modelName)
-	cmd.Dir = "./resources/run_ollama.sh"
+	// Use the ollama_pull_and_run.sh script for model pulling
+	// This script handles quantization and hardware detection
+	cmd := exec.Command("bash", "./ollama_pull_and_run.sh", modelName)
 
 	// Capture both stdout and stderr
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		log.Printf("Error pulling model %s: %v", modelName, err)
-		return "", fmt.Errorf("failed to pull model: %v", err)
+		log.Printf("Error pulling model %s: %v\nOutput: %s", modelName, err, string(output))
+		// Fallback to direct ollama pull if script fails
+		log.Printf("Falling back to direct ollama pull...")
+		cmd = exec.Command("ollama", "pull", modelName)
+		output, err = cmd.CombinedOutput()
+		if err != nil {
+			log.Printf("Fallback also failed for model %s: %v\nOutput: %s", modelName, err, string(output))
+			return "", fmt.Errorf("failed to pull model %s: %v", modelName, err)
+		}
 	}
 
 	log.Printf("Successfully pulled model %s", modelName)
 
-	// Add the model to available models list
-	AVAILABLE_MODELS = append(AVAILABLE_MODELS, modelName)
+	// Add the model to available models list if not already there
+	modelExists := false
+	for _, model := range AVAILABLE_MODELS {
+		if model == modelName {
+			modelExists = true
+			break
+		}
+	}
+	if !modelExists {
+		AVAILABLE_MODELS = append(AVAILABLE_MODELS, modelName)
+	}
 
 	return string(output), nil
 }
