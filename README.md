@@ -20,7 +20,7 @@
 
 ## Features
 
-- **Modern Dark Theme UI** - ChatGPT-inspired interface
+- **Modern Dark Theme UI** - Grok-inspired interface
 - **Real-time Communication** - WebSocket support with auto-reconnect
 - **Multi-Model Support** - Switch between coding, vision, and chat models
 - **Auto-Download Models** - Automatic model pulling when needed
