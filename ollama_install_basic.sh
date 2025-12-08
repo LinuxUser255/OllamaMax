@@ -20,28 +20,29 @@
 #  | **Linux Desktop**  | GTX 1660 / RTX 3060 6–8 GB | `:q4_0` or `:q5_k_m` |
 #  | **Low-End / CPU-Only** | No GPU, 16+ GB RAM | `:q4_0` (CPU offload) |
 #
-#  MODELS INCLUDED (A–J) – BEST FOR DAILY USE
+#  MODELS INCLUDED (A–P) – BEST FOR DAILY USE
 #  -------------------------------------------
 #  CODING & PROBLEM SOLVING
 #    A) deepseek-coder:6.7b   → Write, debug, explain code fast
 #    B) qwen2.5-coder:7b      → Great for Python, JS, Bash
-#
+#    P) qwen2.5-coder:32b-instruct → Elite coding (Claude-level refactors)
+
 #  GENERAL CHAT & WRITING
 #    C) llama3.1:8b           → Best all-rounder (like ChatGPT)
 #    D) gemma2:9b             → Fast, smart, runs on almost anything
 #    E) mistral:7b            → Lightweight, snappy, private
-#
+
 #  DOCUMENT & IMAGE ANALYSIS
 #    F) llava:7b              → Describe photos, read PDFs, OCR
 #    G) moondream:1.8b        → Tiny vision model for edge devices
-#
+
 #  EMBEDDINGS & SEARCH (RAG)
 #    H) nomic-embed-text      → Turn docs into searchable vectors
-#
+
 #  FUN / CREATIVE
 #    I) phi3:mini             → Super fast on CPU, great for jokes
 #    J) tinyllama:1.1b        → Runs on a potato — perfect for testing
-#
+
 #  INSTALLS & RUNS IN ONE COMMAND
 #  -------------------------------
 #  1. Save this file: `ollama-go.sh`
@@ -158,9 +159,7 @@ show_menu() {
    CODING & PROBLEM SOLVING
    A) deepseek-coder:6.7b${DEFAULT_QUANT}     → Best for coding help
    B) qwen2.5-coder:7b${DEFAULT_QUANT}        → Python, JS, Bash
-   L) deepseek-r1                            → DeepSeek R1 reasoning model
-   M) glm-4.6                                → GLM 4.6 model
-   N) deepseek-v3.1                          → DeepSeek v3.1
+   P) qwen2.5-coder:32b-instruct${DEFAULT_QUANT} → Elite coding (Claude-level refactors)
 
    GENERAL CHAT & WRITING
    C) llama3.1:8b${DEFAULT_QUANT}            → Like ChatGPT (DEFAULT)
@@ -188,7 +187,6 @@ EOF
 echo ""
 echo "================================================="
 echo "   OLLAMA QUICK-START – FOR EVERYDAY USERS     "
-echo "
 echo "================================================="
 echo ""
 
@@ -197,7 +195,7 @@ detect_quant
 
 show_menu
 
-read -rp "Choose a model (A-O): " choice
+read -rp "Choose a model (A-P): " choice
 choice=$(echo "$choice" | tr '[:lower:]' '[:upper:]')
 
 case "$choice" in
@@ -216,5 +214,7 @@ case "$choice" in
     M) pull_and_run "glm-4.6"                                  "glm-4.6"                  ;;
     N) pull_and_run "deepseek-v3.1"                            "deepseek-v3.1"            ;;
     O) pull_and_run "qwen3-vl"                                 "qwen3-vl"                 ;;
-    *) error "Invalid choice. Use A–O." ;;
+    P) pull_and_run "qwen2.5-coder:32b-instruct${DEFAULT_QUANT}" "Qwen 2.5-Coder-32B-Instruct" ;;
+    Q) pull_and_run "qwen2.5-coder:32b-instruct-q4_K_M"        "Qwen 2.5-Coder-32B (Quantized)" ;;  # Lighter variant
+    *) error "Invalid choice. Use A–P." ;;
 esac

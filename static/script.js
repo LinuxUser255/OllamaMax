@@ -340,6 +340,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // Get the currently selected model
             // Interfaces with the frontend and sends the message to the backend
             const selectedModel = modelSelect.value;
+            // Packages data as JSON: {message: "...", model_name: "qwen2.5-coder:7b"}
             console.log(`Sending message with model: ${selectedModel}`);
             
             // Use WebSocket if connected, otherwise fall back to HTTP

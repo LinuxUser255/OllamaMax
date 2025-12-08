@@ -47,6 +47,7 @@ type ChatResponse struct {
 var AVAILABLE_MODELS = []string{
 	// Coding & Software Engineering
 	"qwen2.5-coder:7b",
+	"qwen2.5-coder:32b-instruct", // ← NEW: Pure flagship for deep coding/refactors
 	"deepseek-coder:6.7b",
 	"deepseek-r1",
 	"glm-4.6",
@@ -480,7 +481,7 @@ func pullOllamaModel(modelName string) (string, error) {
 	log.Printf("Attempting to pull model: %s", modelName)
 
 	// Use the ollama_pull_and_run.sh script for model pulling
-	// This script handles quantization and hardware detection
+	// os cmd to run the ollama_pull_and_run.sh script
 	cmd := exec.Command("bash", "./ollama_pull_and_run.sh", modelName)
 
 	// Capture both stdout and stderr
@@ -489,6 +490,7 @@ func pullOllamaModel(modelName string) (string, error) {
 		log.Printf("Error pulling model %s: %v\nOutput: %s", modelName, err, string(output))
 		// Fallback to direct ollama pull if script fails
 		log.Printf("Falling back to direct ollama pull...")
+		// OS CMD to runs the ollama pull command directly
 		cmd = exec.Command("ollama", "pull", modelName)
 		output, err = cmd.CombinedOutput()
 		if err != nil {
