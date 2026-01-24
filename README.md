@@ -231,14 +231,6 @@ This project uses Ollama, which is licensed under the MIT License.
 - [Ollama Model Library](https://ollama.com/library)
 - [langchaingo Documentation](https://github.com/tmc/langchaingo)
 
-## Recent Changes
-
-### November 22, 2024
-- Organized all documentation into `docs/` folder
-- Created comprehensive code execution flow analysis
-- Added Mermaid flow diagrams (7 different visualizations)
-- Documented complete architecture and data flow
-- Updated README with clear navigation structure
 
 ---
 
