@@ -48,6 +48,7 @@ var AVAILABLE_MODELS = []string{
 	// Coding & Software Engineering
 	"qwen2.5-coder:7b",
 	"qwen2.5-coder:32b-instruct", // ← NEW: Pure flagship for deep coding/refactors
+	"qwen3-coder:30b",
 	"deepseek-coder:6.7b",
 	"deepseek-r1",
 	"aia/DeepSeek-R1-Distill-Qwen-32B-Uncensored-i1:latest",

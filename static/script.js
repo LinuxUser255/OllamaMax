@@ -9,10 +9,11 @@ document.addEventListener('DOMContentLoaded', function() {
     const userInputBottom = document.getElementById('user-input-bottom');
     const sendButtonBottom = document.getElementById('send-button-bottom');
 
-    // Backend API URL - make sure this matches your backend server
-    const API_URL = 'http://localhost:9999/api/chat';
-    const WS_URL = 'ws://localhost:9999/api/chat/ws';
-    const MODEL_STATUS_URL = 'http://localhost:9999/api/models/status';
+    // Backend API URL - dynamically determined from current location for LAN access
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const API_URL = `${window.location.origin}/api/chat`;
+    const WS_URL = `${wsProtocol}//${window.location.host}/api/chat/ws`;
+    const MODEL_STATUS_URL = `${window.location.origin}/api/models/status`;
     
     // Track model pulling state
     let isPullingModel = false;
