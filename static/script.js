@@ -3,7 +3,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const userInput = document.getElementById('user-input');
     const sendButton = document.getElementById('send-button');
     const modelSelect = document.getElementById('model-select');
-    
+
     // Bottom input area elements
     const bottomInputArea = document.getElementById('bottom-input-area');
     const userInputBottom = document.getElementById('user-input-bottom');
@@ -14,25 +14,28 @@ document.addEventListener('DOMContentLoaded', function() {
     const API_URL = `${window.location.origin}/api/chat`;
     const WS_URL = `${wsProtocol}//${window.location.host}/api/chat/ws`;
     const MODEL_STATUS_URL = `${window.location.origin}/api/models/status`;
-    
+
     // Track model pulling state
     let isPullingModel = false;
 
     // Initialize WebSocket connection
     let socket;
     let isConnected = false;
-    
+
+    // Conversation history --> fix context problem
+    let conversationHistory = [];
+
     function connectWebSocket() {
         socket = new WebSocket(WS_URL);
-        
+
         socket.onopen = function() {
             console.log('WebSocket connection established');
             isConnected = true;
         };
-        
+
         socket.onmessage = function(event) {
             console.log('Message received from server:', event.data);
-            
+
             // Check if this is a status message about model pulling
             const message = event.data;
             if (message.includes('is not installed. Pulling it now')) {
@@ -51,27 +54,33 @@ document.addEventListener('DOMContentLoaded', function() {
                 addMessage(message, false);
                 return;
             }
-            
+
             removeTypingIndicator();
             addMessage(message, false);
+            // === SAVE ASSISTANT REPLY TO HISTORY (this is what makes follow-ups work) ===
+            conversationHistory.push({
+                role: "assistant",
+                content: message
+            });
+
         };
-        
+
         socket.onclose = function() {
             console.log('WebSocket connection closed');
             isConnected = false;
             // Try to reconnect after a delay
             setTimeout(connectWebSocket, 3000);
         };
-        
+
         socket.onerror = function(error) {
             console.error('WebSocket error:', error);
             isConnected = false;
         };
     }
-    
+
     // Connect to WebSocket when page loads
     connectWebSocket();
-    
+
     // Function to check model installation status
     async function checkModelStatus() {
         try {
@@ -79,7 +88,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (response.ok) {
                 const data = await response.json();
                 console.log('Model status:', data);
-                
+
                 // Mark installed models in the dropdown
                 data.models.forEach(model => {
                     const option = Array.from(modelSelect.options).find(opt => opt.value === model.name);
@@ -91,7 +100,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         }
                     }
                 });
-                
+
                 // Set current model if different from selected
                 if (data.current_model && modelSelect.value !== data.current_model) {
                     modelSelect.value = data.current_model;
@@ -101,7 +110,7 @@ document.addEventListener('DOMContentLoaded', function() {
             console.error('Error checking model status:', error);
         }
     }
-    
+
     // Check model status on load
     checkModelStatus();
 
@@ -135,7 +144,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const centerContent = document.querySelector('.center-content');
         if (centerContent && !centerContent.classList.contains('hide')) {
             centerContent.classList.add('hide');
-            
+
             // Show bottom input area
             if (bottomInputArea) {
                 bottomInputArea.style.display = 'flex';
@@ -148,7 +157,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function addMessage(content, isUser = false) {
         // Hide center content when first message is added
         hideCenterContent();
-        
+
         const messageRow = document.createElement('div');
         messageRow.className = `message-row ${isUser ? 'user' : 'bot'}`;
 
@@ -290,19 +299,19 @@ document.addEventListener('DOMContentLoaded', function() {
             indicator.remove();
         }
     }
-    
+
     // Function to show model pulling indicator
     function showModelPullingIndicator(message) {
         // Remove any existing indicators
         hideModelPullingIndicator();
         removeTypingIndicator();
-        
+
         // Disable UI elements
         sendButton.disabled = true;
         modelSelect.disabled = true;
         userInput.disabled = true;
         userInput.placeholder = 'Downloading model, please wait...';
-        
+
         // Create a special pulling indicator
         const indicator = document.createElement('div');
         indicator.className = 'model-pulling-indicator';
@@ -314,18 +323,18 @@ document.addEventListener('DOMContentLoaded', function() {
                 <div class="pulling-note">This may take several minutes depending on model size and internet speed...</div>
             </div>
         `;
-        
+
         chatMessages.appendChild(indicator);
         chatMessages.scrollTop = chatMessages.scrollHeight;
     }
-    
+
     // Function to hide model pulling indicator
     function hideModelPullingIndicator() {
         const indicator = document.getElementById('model-pulling-indicator');
         if (indicator) {
             indicator.remove();
         }
-        
+
         // Re-enable UI elements
         sendButton.disabled = false;
         modelSelect.disabled = false;
@@ -333,35 +342,35 @@ document.addEventListener('DOMContentLoaded', function() {
         userInput.placeholder = 'What do you want to know?';
     }
 
-    // Function to send a message to the backend
+    // Function to send a message to the backend (with FULL conversation history)
     async function sendMessage(message) {
         try {
             showTypingIndicator();
-            
-            // Get the currently selected model
-            // Interfaces with the frontend and sends the message to the backend
+
             const selectedModel = modelSelect.value;
-            // Packages data as JSON: {message: "...", model_name: "qwen2.5-coder:7b"}
-            console.log(`Sending message with model: ${selectedModel}`);
-            
-            // Use WebSocket if connected, otherwise fall back to HTTP
+
+            // Add user message to history FIRST
+            conversationHistory.push({
+                role: "user",
+                content: message
+            });
+
+            console.log(`Sending full conversation history (${conversationHistory.length} turns) to Ollama`);
+
+            const payload = {
+                messages: conversationHistory,   // ← This is the key change
+                model_name: selectedModel
+            };
+
+            // Use WebSocket if connected
             if (isConnected && socket.readyState === WebSocket.OPEN) {
-                // Send via WebSocket
-                socket.send(JSON.stringify({
-                    message: message,
-                    model_name: selectedModel
-                }));
+                socket.send(JSON.stringify(payload));
             } else {
-                // Send via HTTP as fallback
+                // HTTP fallback
                 const response = await fetch(API_URL, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        message: message,
-                        model_name: selectedModel
-                    }),
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
                 });
 
                 if (!response.ok) {
@@ -372,14 +381,18 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 const data = await response.json();
                 removeTypingIndicator();
-
-                // Add the bot's response to the chat
                 addMessage(data.response, false);
+
+                // Add assistant response to history
+                conversationHistory.push({
+                    role: "assistant",
+                    content: data.response
+                });
             }
         } catch (error) {
             console.error('Error sending message:', error);
             removeTypingIndicator();
-            addMessage('Sorry, there was an error processing your request. Please try again.', false);
+            addMessage('Sorry, there was an error processing your request.', false);
         }
     }
 
@@ -411,7 +424,7 @@ document.addEventListener('DOMContentLoaded', function() {
         this.style.height = 'auto';
         this.style.height = (this.scrollHeight) + 'px';
     });
-    
+
     // Bottom input area - auto-resize
     if (userInputBottom) {
         userInputBottom.addEventListener('input', function() {
@@ -419,7 +432,7 @@ document.addEventListener('DOMContentLoaded', function() {
             this.style.height = (this.scrollHeight) + 'px';
         });
     }
-    
+
     // Bottom input area - send button
     if (sendButtonBottom) {
         sendButtonBottom.addEventListener('click', function() {
@@ -427,17 +440,17 @@ document.addEventListener('DOMContentLoaded', function() {
             if (message) {
                 // Add user message to chat
                 addMessage(message, true);
-                
+
                 // Clear input field
                 userInputBottom.value = '';
                 userInputBottom.style.height = 'auto';
-                
+
                 // Send message to backend
                 sendMessage(message);
             }
         });
     }
-    
+
     // Bottom input area - Enter key
     if (userInputBottom) {
         userInputBottom.addEventListener('keypress', function(e) {
@@ -448,16 +461,16 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Initialize model selector
-    if (!modelSelect.value || modelSelect.value === 'auto') {
-        modelSelect.value = 'llama3.1'; // Set default model
+    // Initialize model selector       ← 4 spaces
+    if (!modelSelect.value || modelSelect.value === 'auto') {   ← 4 spaces
+        modelSelect.value = 'llama3.1:8b';
     }
-    
+
     // Add visual feedback when model is changed
     modelSelect.addEventListener('change', function() {
         const selectedModel = this.value;
         console.log(`Model changed to: ${selectedModel}`);
-        
+
         // Check if model needs to be installed
         const selectedOption = this.options[this.selectedIndex];
         if (selectedOption.text.includes('(Not Installed)')) {
@@ -467,7 +480,7 @@ document.addEventListener('DOMContentLoaded', function() {
             notification.textContent = `Model ${selectedOption.text} will be downloaded when you send a message`;
             notification.style.backgroundColor = '#f59e0b'; // Warning color
             document.body.appendChild(notification);
-            
+
             setTimeout(() => {
                 notification.style.opacity = '0';
                 setTimeout(() => notification.remove(), 300);
@@ -478,7 +491,7 @@ document.addEventListener('DOMContentLoaded', function() {
             notification.className = 'model-change-notification';
             notification.textContent = `Switched to ${this.options[this.selectedIndex].text}`;
             document.body.appendChild(notification);
-            
+
             setTimeout(() => {
                 notification.style.opacity = '0';
                 setTimeout(() => notification.remove(), 300);
@@ -493,7 +506,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const action = this.getAttribute('title');
             // These are placeholders - you can implement actual functionality
             console.log(`Action button clicked: ${action}`);
-            
+
             switch(action) {
                 case 'Deep Search':
                     userInput.value = '[Deep Search Mode] ';

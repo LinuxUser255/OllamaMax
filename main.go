@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -9,7 +8,6 @@ import (
 	"net/http"
 	"os/exec"
 	"strings"
-	"text/template"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -25,10 +23,15 @@ type ModelInfo struct {
 	ModTime string `json:"modified,omitempty"`
 }
 
-// ChatMessage represents a message from the user with the model to use
+// ConversationMessage = one turn in the chat history (like a dict in Python)
+type ConversationMessage struct {
+    Role    string `json:"role"`
+    Content string `json:"content"`
+}
+
 type ChatMessage struct {
-	Message   string `json:"message"`
-	ModelName string `json:"model_name,omitempty"`
+    Messages  []ConversationMessage `json:"messages"`
+    ModelName string                `json:"model_name,omitempty"`
 }
 
 // ModelInfoResponse represents the response with available models and current model
@@ -75,37 +78,7 @@ const DEFAULT_MODEL = "llama3.1:8b"
 // Current model
 var currentModel = DEFAULT_MODEL
 
-const SystemTemplate = `You are a helpful coding assistant. When providing code examples:
-1. Always use proper markdown formatting with language-specific syntax highlighting
-2. Use triple backticks with the language name for code blocks (e.g. "` + "```" + `python")
-3. Format code in a clean, readable way with proper indentation
-4. Use VSCode-style syntax highlighting conventions
-
-User Query: {{.Query}}
-`
-
-// PromptData holds the data to be inserted into the template
-type PromptData struct {
-	Query string
-}
-
-// FormatPrompt formats the system prompt with the user query
-func FormatPrompt(query string) string {
-	tmpl, err := template.New("prompt").Parse(SystemTemplate)
-	if err != nil {
-		log.Printf("Error parsing template: %v", err)
-		return ""
-	}
-
-	var buf bytes.Buffer
-	err = tmpl.Execute(&buf, PromptData{Query: query})
-	if err != nil {
-		log.Printf("Error executing template: %v", err)
-		return ""
-	}
-
-	return buf.String()
-}
+//NOTE: Deleted const SystemTemplate, the type PromptData struct, and the entire func FormatPrompt() function
 
 // PORT Configuration
 const (
@@ -113,7 +86,7 @@ const (
 )
 
 // Message structure for WebSocket communication
-type Message struct {
+type LegacyMessage struct {
 	Message string `json:"message"`
 	Model   string `json:"model"`
 }
@@ -295,7 +268,7 @@ func handleChat(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Process the message with Ollama
-	response := processOllamaQueryWithLangChain(chatMsg.Message, currentModel)
+	response := processOllamaQueryWithLangChain(chatMsg.Messages, currentModel)
 
 	// Send response
 	w.Header().Set("Content-Type", "application/json")
@@ -339,14 +312,14 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 			log.Printf("Error parsing message: %v", err)
 
 			// Try parsing with the old Message structure as fallback
-			var oldMsg Message
+			var oldMsg LegacyMessage
 			if jsonErr := json.Unmarshal(p, &oldMsg); jsonErr != nil {
 				log.Printf("Also failed to parse as old message format: %v", jsonErr)
 				continue
 			}
 
-			// Convert old format to new format
-			chatMsg.Message = oldMsg.Message
+			// wrap the single string into a slice
+			chatMsg.Messages = []ConversationMessage{{Role: "user", Content: oldMsg.Message}}
 			chatMsg.ModelName = oldMsg.Model
 			log.Println("Successfully parsed using old message format")
 		}
@@ -391,8 +364,8 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 
 		log.Printf("Processing query with model: %s", currentModel)
 
-		// Process the message with Ollama using langchaingo
-		response := processOllamaQueryWithLangChain(chatMsg.Message, currentModel)
+		// Process the messages with Ollama using langchaingo
+		response := processOllamaQueryWithLangChain(chatMsg.Messages, currentModel)
 
 		log.Printf("Got response (length: %d)", len(response))
 
@@ -565,30 +538,80 @@ func handleModelPull(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// processOllamaQueryWithLangChain processes a query using the Ollama LLM through langchaingo
-func processOllamaQueryWithLangChain(query string, modelName string) string {
-	// Create a context with timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
-	defer cancel()
+// trimMessages caps history size so Big-O stays O(k), not O(n)
+// Like Python: msgs[-20:] but also checking total char length
+func trimMessages(msgs []ConversationMessage) []ConversationMessage {
+    const MaxMessages = 20
+    const MaxChars = 12000
 
-	// Format the prompt with the system template
-	formattedPrompt := FormatPrompt(query)
+    if len(msgs) > MaxMessages {
+        msgs = msgs[len(msgs)-MaxMessages:]
+    }
 
-	// Initialize the Ollama LLM client
-	llm, err := ollama.New(
-		ollama.WithModel(modelName),
-	)
-	if err != nil {
-		log.Printf("Error initializing Ollama: %v", err)
-		return fmt.Sprintf("Error initializing Ollama: %v", err)
-	}
+    total := 0
+    for i := len(msgs) - 1; i >= 0; i-- {
+        total += len(msgs[i].Content)
+        if total > MaxChars {
+            return msgs[i+1:]
+        }
+    }
+    return msgs
+}
 
-	// Generate a response from the LLM
-	response, err := llm.Call(ctx, formattedPrompt, llms.WithTemperature(0.7))
-	if err != nil {
-		log.Printf("Error calling Ollama: %v", err)
-		return fmt.Sprintf("Error generating response: %v", err)
-	}
+// processOllamaQueryWithLangChain now takes full conversation history
+func processOllamaQueryWithLangChain(messages []ConversationMessage, modelName string) string {
+    ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+    defer cancel()
 
-	return response
+    llm, err := ollama.New(ollama.WithModel(modelName))
+    if err != nil {
+        return fmt.Sprintf("Error initializing Ollama: %v", err)
+    }
+
+    messages = trimMessages(messages)
+
+    // Build the message graph — like a Python list of dicts with role/content
+    var contents []llms.MessageContent
+
+    // Static system prompt (NOT templated — stays separate from user content)
+    contents = append(contents, llms.MessageContent{
+        Role: llms.ChatMessageTypeSystem,
+        Parts: []llms.ContentPart{
+            llms.TextPart("You are a helpful coding assistant. When providing code examples: use proper markdown formatting with language-specific syntax highlighting, triple backticks with the language name, clean indentation, and VSCode-style conventions."),
+        },
+    })
+
+    // Append conversation history
+    for _, m := range messages {
+        var role llms.ChatMessageType
+        switch m.Role {
+        case "user":
+            role = llms.ChatMessageTypeHuman
+        case "assistant":
+            role = llms.ChatMessageTypeAI
+        default:
+            continue // skip unknown roles
+        }
+        contents = append(contents, llms.MessageContent{
+            Role: role,
+            Parts: []llms.ContentPart{llms.TextPart(m.Content)},
+        })
+    }
+
+    resp, err := llm.GenerateContent(ctx, contents, llms.WithTemperature(0.7))
+    if err != nil {
+        return fmt.Sprintf("Error generating response: %v", err)
+    }
+    if len(resp.Choices) == 0 {
+        return "No response generated"
+    }
+
+    // Extract text — like joining parts of a response in Python
+    var out strings.Builder
+    for _, choice := range resp.Choices {
+        if choice.Content != "" {
+            out.WriteString(choice.Content)
+        }
+    }
+    return out.String()
 }
