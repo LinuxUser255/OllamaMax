@@ -185,7 +185,6 @@ body {
     padding: 0 20px;
     z-index: 5;
 }
-}
 
 .center-content.hide {
     display: none;
@@ -365,7 +364,8 @@ body {
 
 /* When bottom input is shown, adjust chat messages */
 .chat-messages.with-bottom-input {
-    bottom: 90px;
+    bottom: 120px;
+    padding-bottom: 20px;
 }
 
 .chat-messages > * {
