@@ -10,9 +10,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const sendButtonBottom = document.getElementById('send-button-bottom');
 
     // Backend API URL - make sure this matches your backend server
-    const API_URL = 'http://localhost:8888/api/chat';
-    const WS_URL = 'ws://localhost:8888/api/chat/ws';
-    const MODEL_STATUS_URL = 'http://localhost:8888/api/models/status';
+    const API_URL = 'http://localhost:9999/api/chat';
+    const WS_URL = 'ws://localhost:9999/api/chat/ws';
+    const MODEL_STATUS_URL = 'http://localhost:9999/api/models/status';
     
     // Track model pulling state
     let isPullingModel = false;

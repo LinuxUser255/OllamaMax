@@ -17,7 +17,8 @@
 #
 #  SUPPORTED MODELS (from OllamaMax)
 #  ---------------------------------
-#  Coding: qwen2.5-coder:7b, deepseek-coder:6.7b, deepseek-r1, glm-4.6, deepseek-v3.1
+#  Coding: qwen2.5-coder:7b, deepseek-coder:6.7b, deepseek-r1, glm-4.6, deepseek-v3.1,
+#          aia/DeepSeek-R1-Distill-Qwen-32B-Uncensored-i1:latest
 #  Chat: llama3.1:8b, qwen3:7b, gemma2:9b, mistral:7b
 #  Vision: llava:7b, moondream:1.8b, qwen3-vl
 #  Light: phi3:mini, tinyllama:1.1b
@@ -140,6 +141,7 @@ show_menu() {
    C) deepseek-r1                            → DeepSeek R1 reasoning model
    D) glm-4.6                                → GLM 4.6 model
    E) deepseek-v3.1                          → DeepSeek v3.1
+   P) DeepSeek-R1-Distill-Qwen-32B           → Uncensored 32B reasoning
 
    GENERAL CHAT & WRITING
    F) llama3.1:8b${DEFAULT_QUANT}            → Like ChatGPT (DEFAULT)
@@ -214,7 +216,8 @@ else
         M) pull_and_run "phi3:mini"                             "phi3:mini"           ;;
         N) pull_and_run "tinyllama:1.1b"                        "tinyllama:1.1b"      ;;
         O) pull_and_run "nomic-embed-text"                      "nomic-embed-text"    ;;
-        *) error "Invalid selection – use A-O" ;;
+        P) pull_and_run "aia/DeepSeek-R1-Distill-Qwen-32B-Uncensored-i1:latest" "DeepSeek-R1-Distill-Qwen-32B" ;;
+        *) error "Invalid selection – use A-P" ;;
     esac
     
     log "Ready to use! Run 'ollama run <model-name>' to start chatting."

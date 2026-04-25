@@ -50,6 +50,7 @@ var AVAILABLE_MODELS = []string{
 	"qwen2.5-coder:32b-instruct", // ← NEW: Pure flagship for deep coding/refactors
 	"deepseek-coder:6.7b",
 	"deepseek-r1",
+	"aia/DeepSeek-R1-Distill-Qwen-32B-Uncensored-i1:latest",
 	"glm-4.6",
 	"deepseek-v3.1",
 	// Vision-Language & Multimodal
@@ -107,7 +108,7 @@ func FormatPrompt(query string) string {
 
 // PORT Configuration
 const (
-	PORT = "8888"
+	PORT = "9999"
 )
 
 // Message structure for WebSocket communication
@@ -467,8 +468,10 @@ func checkModelInstalled(modelName string) bool {
 		if len(fields) >= 1 {
 			// Check if the model name matches (with or without tag)
 			installedModel := fields[0]
-			// Handle cases like "llama3.1:latest" vs "llama3.1"
-			if installedModel == modelName || strings.HasPrefix(installedModel, modelName+":") {
+			// Handle cases like "llama3.1:latest" vs "llama3.1" in both directions
+			if installedModel == modelName ||
+				strings.HasPrefix(installedModel, modelName+":") ||
+				strings.HasPrefix(modelName, installedModel+":") {
 				return true
 			}
 		}
