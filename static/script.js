@@ -101,9 +101,25 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 });
 
-                // Set current model if different from selected
-                if (data.current_model && modelSelect.value !== data.current_model) {
-                    modelSelect.value = data.current_model;
+                // Set default model after options are populated
+                const preferredModel = 'llama3.1:8b';
+                const preferredOption = Array.from(modelSelect.options).find(opt => opt.value === preferredModel);
+                
+                if (preferredOption && preferredOption.text.includes('✓')) {
+                    // Preferred model is installed, select it
+                    modelSelect.value = preferredModel;
+                } else {
+                    // Preferred model not installed, find first installed model
+                    const firstInstalled = Array.from(modelSelect.options).find(opt => opt.text.includes('✓'));
+                    if (firstInstalled) {
+                        modelSelect.value = firstInstalled.value;
+                    } else {
+                        // No models installed at all
+                        addMessage(
+                            `⚠️ No models are currently installed.\n\nTo get started, run:\n\`\`\`bash\nollama pull ${preferredModel}\n\`\`\`\n\nOr choose another model from the dropdown and send a message to download it automatically.`,
+                            false
+                        );
+                    }
                 }
             }
         } catch (error) {
@@ -461,10 +477,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Initialize model selector       ← 4 spaces
-    if (!modelSelect.value || modelSelect.value === 'auto') {   ← 4 spaces
-        modelSelect.value = 'llama3.1:8b';
-    }
+    // Model selector initialization now handled in checkModelStatus()
 
     // Add visual feedback when model is changed
     modelSelect.addEventListener('change', function() {
